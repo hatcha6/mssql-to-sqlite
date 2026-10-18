@@ -118,28 +118,88 @@ namespace MssqlToSqlite.Core
 
         private void Attach(string mdfPath, Action<string> log)
         {
-            // Copy beside the original: SQL Server's service account already reads
-            // that folder if this file was ever attached from there.
-            string folder = Path.GetDirectoryName(Path.GetFullPath(mdfPath));
-            string copy = Path.Combine(folder, Name + ".mdf");
-            log(Text.CopyingDataFile);
-            File.Copy(mdfPath, copy);
-            _copies.Add(copy);
-            // Detached files and files off a CD/USB stick are often read-only, and
-            // SQL Server cannot rebuild the log of a read-only primary file.
-            File.SetAttributes(copy, File.GetAttributes(copy) & ~FileAttributes.ReadOnly);
-
+            string ldfPath = FindLog(mdfPath);
             using (var connection = _options.Open("master"))
             {
+                // SQL Server's own DATA folder is the one place its service account
+                // can surely write (it needs write access even to rebuild a log).
+                // Copying there needs an elevated tool on a full instance, so fall
+                // back to the original's folder when it is refused.
+                log(Text.CopyingDataFile);
+                string folder = SqlServerCatalog.DataDirectory(connection);
+                string copy;
+                try
+                {
+                    copy = CopyIn(mdfPath, folder, ".mdf");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    folder = Path.GetDirectoryName(Path.GetFullPath(mdfPath));
+                    copy = CopyIn(mdfPath, folder, ".mdf");
+                }
+                string logCopy = ldfPath != null ? CopyIn(ldfPath, folder, "_log.ldf") : null;
+
                 log(Text.Attaching);
-                string sql = "CREATE DATABASE " + Sql.QuoteMssql(Name) + " ON (FILENAME = " + Sql.NLiteral(copy) + ") FOR ATTACH_REBUILD_LOG";
-                using (var attach = new SqlCommand(sql, connection) { CommandTimeout = 0 })
-                    attach.ExecuteNonQuery();
+                string sql = "CREATE DATABASE " + Sql.QuoteMssql(Name) + " ON (FILENAME = " + Sql.NLiteral(copy) + ")"
+                    + (logCopy != null ? ", (FILENAME = " + Sql.NLiteral(logCopy) + ") FOR ATTACH" : " FOR ATTACH_REBUILD_LOG");
+                if (logCopy == null)
+                    _copies.Add(Path.Combine(folder, Name + "_log.ldf")); // the rebuilt log lands beside the copy
+                try
+                {
+                    Execute(connection, sql);
+                }
+                catch (SqlException) when (logCopy != null)
+                {
+                    // A log from a different moment than the .mdf will not attach; a rebuilt one will.
+                    _copies.Remove(logCopy);
+                    TryDelete(logCopy);
+                    _copies.Add(Path.Combine(folder, Name + "_log.ldf"));
+                    Execute(connection, "CREATE DATABASE " + Sql.QuoteMssql(Name) + " ON (FILENAME = " + Sql.NLiteral(copy) + ") FOR ATTACH_REBUILD_LOG");
+                }
                 _attached = true;
             }
+        }
 
-            // ATTACH_REBUILD_LOG writes a fresh log next to the copy.
-            _copies.Add(Path.Combine(folder, Name + "_log.LDF"));
+        /// <summary>Copies into <paramref name="folder"/> under this mount's name, writable (detached and CD/USB files are often read-only).</summary>
+        private string CopyIn(string source, string folder, string suffix)
+        {
+            string copy = Path.Combine(folder, Name + suffix);
+            File.Copy(source, copy);
+            _copies.Add(copy);
+            File.SetAttributes(copy, File.GetAttributes(copy) & ~FileAttributes.ReadOnly);
+            return copy;
+        }
+
+        /// <summary>The usual log names beside an .mdf: Shop_log.ldf, Shop.ldf.</summary>
+        private static string FindLog(string mdfPath)
+        {
+            string folder = Path.GetDirectoryName(Path.GetFullPath(mdfPath));
+            string stem = Path.GetFileNameWithoutExtension(mdfPath);
+            foreach (string candidate in new[] { stem + "_log.ldf", stem + ".ldf" })
+            {
+                string path = Path.Combine(folder, candidate);
+                if (File.Exists(path))
+                    return path;
+            }
+            return null;
+        }
+
+        private static void Execute(SqlConnection connection, string sql)
+        {
+            using (var command = new SqlCommand(sql, connection) { CommandTimeout = 0 })
+                command.ExecuteNonQuery();
+        }
+
+        private static void TryDelete(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public void Dispose()
@@ -168,16 +228,7 @@ namespace MssqlToSqlite.Core
             }
 
             foreach (string copy in _copies)
-            {
-                try
-                {
-                    if (File.Exists(copy))
-                        File.Delete(copy);
-                }
-                catch (Exception)
-                {
-                }
-            }
+                TryDelete(copy);
             _copies.Clear();
         }
     }

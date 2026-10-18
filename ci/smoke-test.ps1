@@ -55,6 +55,8 @@ $mdf.Open()
 $cmd = $mdf.CreateCommand()
 $cmd.CommandText = "SELECT physical_name FROM sys.master_files WHERE database_id = DB_ID('SmokeShop') AND type = 0"
 $mdfPath = [string] $cmd.ExecuteScalar()
+$cmd.CommandText = "SELECT physical_name FROM sys.master_files WHERE database_id = DB_ID('SmokeShop') AND type = 1"
+$ldfPath = [string] $cmd.ExecuteScalar()
 $mdf.Close()
 Invoke-Sql 'master' "ALTER DATABASE SmokeShop SET SINGLE_USER WITH ROLLBACK IMMEDIATE`nGO`nEXEC sp_detach_db N'SmokeShop'"
 $mdfCopy = Join-Path $Work 'SmokeShop.mdf'
@@ -66,6 +68,16 @@ python (Join-Path $PSScriptRoot 'verify.py') $fromMdf
 if ($LASTEXITCODE -ne 0) { throw 'mdf export failed verification' }
 if ((Get-FileHash $mdfCopy).Hash -ne $before) { throw 'the original .mdf was modified' }
 
+# 3b. Same, with its log file beside it (attached as-is instead of rebuilt)
+$withLog = Join-Path $Work 'withlog'
+New-Item -ItemType Directory -Force $withLog | Out-Null
+Copy-Item $mdfPath (Join-Path $withLog 'SmokeShop.mdf')
+Copy-Item $ldfPath (Join-Path $withLog 'SmokeShop_log.ldf')
+$fromMdfLog = Join-Path $Work 'mdflog.db'
+Invoke-Exe @('--server', "`"$server`"", '--mdf', "`"$(Join-Path $withLog 'SmokeShop.mdf')`"", '--out', "`"$fromMdfLog`"") 'mdflog'
+python (Join-Path $PSScriptRoot 'verify.py') $fromMdfLog
+if ($LASTEXITCODE -ne 0) { throw 'mdf+ldf export failed verification' }
+
 # No temporary databases or copied files may be left behind.
 $check = New-Object System.Data.SqlClient.SqlConnection "Server=$server;Database=master;Integrated Security=true;Pooling=false"
 $check.Open()
@@ -74,7 +86,7 @@ $cmd.CommandText = "SELECT COUNT(*) FROM sys.databases WHERE name LIKE 'MssqlToS
 $leftover = [int] $cmd.ExecuteScalar()
 $check.Close()
 if ($leftover -ne 0) { throw "$leftover temporary database(s) left behind" }
-if (Get-ChildItem $Work -Filter 'MssqlToSqlite_*') { throw 'temporary data file copies left behind' }
+if (Get-ChildItem $Work, (Split-Path $mdfPath) -Recurse -Filter 'MssqlToSqlite_*') { throw 'temporary data file copies left behind' }
 
 # 4. Table selection and the list command
 $subset = Join-Path $Work 'subset.db'
