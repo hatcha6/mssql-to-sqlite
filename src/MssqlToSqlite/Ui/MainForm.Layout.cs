@@ -20,7 +20,13 @@ namespace MssqlToSqlite.Ui
         {
             var card = new Card { Dock = DockStyle.Fill, Margin = new Padding(Theme.S(4)) };
             var grid = Column();
-            grid.AutoScroll = true; // SQL sign-in rows can outgrow a 768px-tall screen
+            // SQL sign-in rows can outgrow a 768px-tall screen; scroll only then.
+            grid.Layout += (s, e) =>
+            {
+                bool overflow = grid.GetPreferredSize(new Size(grid.ClientSize.Width, 0)).Height > grid.Height;
+                if (grid.AutoScroll != overflow)
+                    grid.AutoScroll = overflow;
+            };
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // shrink to fit: never a horizontal bar
             grid.Controls.Add(TitleLabel(Core.Text.SourceTitle));
             grid.Controls.Add(Stretch(_source));
