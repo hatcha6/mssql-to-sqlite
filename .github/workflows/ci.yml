@@ -1,0 +1,77 @@
+name: ci
+
+# Every push builds, runs the end-to-end LocalDB smoke test and captures UI
+# screenshots. A v* tag additionally publishes the zip as a GitHub release.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') { $v = $env:GITHUB_REF_NAME.Substring(1) } else { $v = '0.0.0' }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build
+        run: dotnet build src/MssqlToSqlite/MssqlToSqlite.csproj -c Release -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Smoke test (LocalDB)
+        shell: pwsh
+        run: ./ci/smoke-test.ps1 -Exe "$pwd/src/MssqlToSqlite/bin/Release/net40/MssqlToSqlite.exe"
+
+      - name: Screenshots
+        if: always()
+        shell: pwsh
+        run: |
+          $exe = "$pwd/src/MssqlToSqlite/bin/Release/net40/MssqlToSqlite.exe"
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          foreach ($state in 'idle', 'server', 'export', 'file') {
+            Start-Process $exe -ArgumentList '--screenshot', "`"$pwd/screenshots/$state.png`"", '--demo', $state -Wait
+          }
+          Get-ChildItem screenshots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots/
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = 'src/MssqlToSqlite/bin/Release/net40'
+          $stage = 'package/MssqlToSqlite'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item "$out/MssqlToSqlite.exe", "$out/MssqlToSqlite.exe.config", "$out/System.Data.SQLite.dll" $stage
+          Copy-Item "$out/x86", "$out/x64" $stage -Recurse
+          Copy-Item README.md, src/MssqlToSqlite/Assets/fonts/OFL.txt $stage
+          Compress-Archive -Path $stage -DestinationPath "package/MssqlToSqlite-${{ steps.version.outputs.version }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MssqlToSqlite
+          path: package/*.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: gh release create $env:GITHUB_REF_NAME "package/MssqlToSqlite-${{ steps.version.outputs.version }}.zip" --title $env:GITHUB_REF_NAME --generate-notes
