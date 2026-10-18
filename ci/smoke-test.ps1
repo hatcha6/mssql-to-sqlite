@@ -92,7 +92,7 @@ if (Get-ChildItem $Work, (Split-Path $mdfPath) -Recurse -Filter 'MssqlToSqlite_*
 $subset = Join-Path $Work 'subset.db'
 Invoke-Sql 'master' "CREATE DATABASE SmokeShop ON (FILENAME = N'$mdfPath'), (FILENAME = N'$ldfPath') FOR ATTACH"
 Invoke-Exe @('--server', "`"$server`"", '--database', 'SmokeShop', '--tables', 'CAR_PART,sales.ORDERS', '--out', "`"$subset`"") 'subset'
-python -c "import sqlite3,sys; n=[r[0] for r in sqlite3.connect(sys.argv[1]).execute(\"select name from sqlite_master where type='table' order by name\")]; print(n); sys.exit(0 if n==['CAR_PART','_export_info','_export_tables','sales_ORDERS'] else 1)" $subset
+python (Join-Path $PSScriptRoot 'tables.py') $subset CAR_PART _export_info _export_tables sales_ORDERS
 if ($LASTEXITCODE -ne 0) { throw '--tables selected the wrong tables' }
 Invoke-Exe @('--server', "`"$server`"", '--list') 'list'
 
