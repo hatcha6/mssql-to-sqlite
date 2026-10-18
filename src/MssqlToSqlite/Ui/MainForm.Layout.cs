@@ -20,15 +20,16 @@ namespace MssqlToSqlite.Ui
         {
             var card = new Card { Dock = DockStyle.Fill, Margin = new Padding(Theme.S(4)) };
             var grid = Column();
+            grid.AutoScroll = true; // SQL sign-in rows can outgrow a 768px-tall screen
             grid.Controls.Add(TitleLabel(Core.Text.SourceTitle));
             grid.Controls.Add(Stretch(_source));
 
             grid.Controls.Add(FieldLabel(Core.Text.ServerLabel));
-            grid.Controls.Add(Row(_server, _discover));
+            grid.Controls.Add(Row(new ComboShell(_server), _discover));
 
             grid.Controls.Add(FieldLabel(Core.Text.AuthLabel));
             _auth.Items.AddRange(new object[] { Core.Text.AuthWindows, Core.Text.AuthSql });
-            grid.Controls.Add(Stretch(_auth));
+            grid.Controls.Add(Stretch(new ComboShell(_auth)));
 
             _userRows.Add(FieldLabel(Core.Text.UserLabel));
             _userRows.Add(Stretch(_user));
@@ -52,7 +53,7 @@ namespace MssqlToSqlite.Ui
             grid.Controls.Add(connectRow);
 
             _databaseRows.Add(FieldLabel(Core.Text.DatabaseLabel));
-            _databaseRows.Add(Stretch(_database));
+            _databaseRows.Add(Stretch(new ComboShell(_database)));
             foreach (Control c in _databaseRows)
                 grid.Controls.Add(c);
 

@@ -91,7 +91,7 @@ namespace MssqlToSqlite.Core
         public const string TableHasNoColumns = "تخطي {0}: لا أعمدة قابلة للقراءة.";
         public const string UniqueIndexDowngraded = "الفهرس الفريد {1} على {0} أُنشئ كفهرس عادي لتكرار في القيم.";
         public const string DecimalsRounded = "{0}: {1} قيمة عشرية تتجاوز 15 رقمًا معنويًا خُزّنت مقرّبة (حد SQLite).";
-        public const string TableCopied = "{0}: {1} صف";
+        public const string TableCopied = "نُسخ {0}: {1} صف";
         public const string FileNotFound = "الملف غير موجود.";
 
         /// <summary>A server error in words a shop technician can act on, with the original kept for us.</summary>

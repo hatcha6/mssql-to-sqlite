@@ -80,8 +80,10 @@ namespace MssqlToSqlite.Ui
             ForeColor = Theme.Ink;
             RightToLeft = RightToLeft.Yes;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(Theme.S(1100), Theme.S(740));
-            MinimumSize = new Size(Theme.S(940), Theme.S(640));
+            // Many shop PCs are 1366x768 or 1024x768: never open taller than the screen.
+            Rectangle screen = Screen.PrimaryScreen.WorkingArea;
+            ClientSize = new Size(Math.Min(Theme.S(1100), screen.Width - Theme.S(24)), Math.Min(Theme.S(740), screen.Height - Theme.S(48)));
+            MinimumSize = new Size(Math.Min(Theme.S(940), screen.Width), Math.Min(Theme.S(600), screen.Height));
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch (Exception) { }
 
             var root = new TableLayoutPanel
@@ -106,6 +108,9 @@ namespace MssqlToSqlite.Ui
             root.Controls.Add(BuildFooter(), 0, 1);
             Controls.Add(root);
             Controls.Add(new TopBar { Text = Core.Text.Brand, Title = Core.Text.AppTitle, Trailing = "v" + SqliteExporter.ToolVersion });
+
+            foreach (Control latin in new Control[] { _server, _user.Box, _password.Box, _file.Box, _output.Box })
+                latin.RightToLeft = RightToLeft.No;
 
             LoadSettings();
             ApplySourceMode();

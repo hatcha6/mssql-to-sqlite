@@ -168,6 +168,40 @@ namespace MssqlToSqlite.Ui
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
     }
 
+    /// <summary>
+    /// The same rounded 12px field around a ComboBox. A flat combo's own border is
+    /// white-on-white, so the shell's border is the one that shows.
+    /// </summary>
+    internal sealed class ComboShell : Panel
+    {
+        public ComboShell(ComboBox combo)
+        {
+            DoubleBuffered = true;
+            ResizeRedraw = true;
+            BackColor = Theme.Surface;
+            Height = Theme.S(40);
+            Margin = new Padding(Theme.S(4));
+            Combo = combo;
+            combo.Margin = Padding.Empty;
+            combo.Dock = DockStyle.Fill;
+            Padding = new Padding(Theme.S(6), Math.Max(1, (Height - combo.Height) / 2), Theme.S(6), 0);
+            combo.GotFocus += (s, e) => Invalidate();
+            combo.LostFocus += (s, e) => Invalidate();
+            combo.EnabledChanged += (s, e) => Invalidate();
+            Controls.Add(combo);
+        }
+
+        public ComboBox Combo { get; }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.Clear(Parent?.BackColor ?? Theme.Surface);
+            var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+            bool focused = Combo.Focused;
+            Theme.FillRounded(e.Graphics, bounds, Theme.S(Theme.RadiusInput), Combo.Enabled ? Theme.Surface : Theme.SubtleFill, focused ? Theme.Primary : Theme.LineStrong);
+        }
+    }
+
     /// <summary>Pointy's segmented button: sunken track, the chosen segment raised.</summary>
     internal sealed class SegmentedControl : Control
     {
