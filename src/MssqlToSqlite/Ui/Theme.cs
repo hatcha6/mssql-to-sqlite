@@ -47,6 +47,12 @@ namespace MssqlToSqlite.Ui
         private static readonly PrivateFontCollection Fonts = new PrivateFontCollection();
         private static readonly Dictionary<string, FontFamily> Families = new Dictionary<string, FontFamily>();
 
+        /// <summary>Short screens (1024x768, 1366x768): tighter fields, like Pointy's compact till layout.</summary>
+        public static bool Compact { get; private set; }
+
+        /// <summary>Height of inputs, dropdowns, buttons and the segmented control.</summary>
+        public static int FieldHeight => S(Compact ? 34 : 40);
+
         /// <summary>Device pixels for a 96-dpi design value.</summary>
         public static int S(int value) => (int)Math.Round(value * _scale);
 
@@ -54,6 +60,7 @@ namespace MssqlToSqlite.Ui
         {
             using (var g = Graphics.FromHwnd(IntPtr.Zero))
                 _scale = g.DpiX / 96f;
+            Compact = Screen.PrimaryScreen.WorkingArea.Height < S(900);
             LoadFont("Regular");
             LoadFont("SemiBold");
             LoadFont("Bold");

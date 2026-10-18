@@ -21,6 +21,7 @@ namespace MssqlToSqlite.Ui
             var card = new Card { Dock = DockStyle.Fill, Margin = new Padding(Theme.S(4)) };
             var grid = Column();
             grid.AutoScroll = true; // SQL sign-in rows can outgrow a 768px-tall screen
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // shrink to fit: never a horizontal bar
             grid.Controls.Add(TitleLabel(Core.Text.SourceTitle));
             grid.Controls.Add(Stretch(_source));
 
@@ -44,7 +45,7 @@ namespace MssqlToSqlite.Ui
                 grid.Controls.Add(c);
 
             var connectRow = Row(_connect, _connectionChip);
-            connectRow.Margin = new Padding(0, Theme.S(12), 0, Theme.S(4));
+            connectRow.Margin = new Padding(0, Theme.S(Theme.Compact ? 6 : 12), 0, Theme.S(4));
             _connect.Width = Theme.S(120);
             connectRow.ColumnStyles[0] = new ColumnStyle(SizeType.AutoSize);
             connectRow.ColumnStyles[1] = new ColumnStyle(SizeType.Percent, 100);
@@ -57,7 +58,7 @@ namespace MssqlToSqlite.Ui
             foreach (Control c in _databaseRows)
                 grid.Controls.Add(c);
 
-            _hint.Margin = new Padding(Theme.S(4), Theme.S(12), Theme.S(4), 0);
+            _hint.Margin = new Padding(Theme.S(4), Theme.S(Theme.Compact ? 6 : 12), Theme.S(4), 0);
             _hint.MaximumSize = new Size(Theme.S(340), 0);
             grid.Controls.Add(_hint);
             card.Controls.Add(grid);
@@ -256,7 +257,7 @@ namespace MssqlToSqlite.Ui
             Font = Theme.Label,
             ForeColor = Theme.MutedInk,
             AutoSize = true,
-            Margin = new Padding(Theme.S(4), Theme.S(8), Theme.S(4), 0),
+            Margin = new Padding(Theme.S(4), Theme.S(Theme.Compact ? 4 : 8), Theme.S(4), 0),
         };
 
         private static Label MutedLabel(string text) => new Label

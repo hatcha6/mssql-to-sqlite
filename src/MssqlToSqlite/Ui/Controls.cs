@@ -19,7 +19,7 @@ namespace MssqlToSqlite.Ui
             DoubleBuffered = true;
             ResizeRedraw = true;
             BackColor = Theme.Page;
-            Padding = new Padding(Theme.S(16));
+            Padding = new Padding(Theme.Compact ? Theme.S(12) : Theme.S(16));
         }
 
         /// <summary>Surface by default; SurfaceSunken for wells such as the log.</summary>
@@ -51,7 +51,7 @@ namespace MssqlToSqlite.Ui
             Variant = variant;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
             Font = Theme.BodyStrong;
-            Height = Theme.S(40);
+            Height = Theme.FieldHeight;
             Cursor = Cursors.Hand;
             Margin = new Padding(Theme.S(4));
         }
@@ -61,7 +61,7 @@ namespace MssqlToSqlite.Ui
         public override Size GetPreferredSize(Size proposedSize)
         {
             Size text = TextRenderer.MeasureText(Text, Font);
-            return new Size(text.Width + Theme.S(36), Theme.S(40));
+            return new Size(text.Width + Theme.S(36), Theme.FieldHeight);
         }
 
         protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
@@ -120,9 +120,9 @@ namespace MssqlToSqlite.Ui
             DoubleBuffered = true;
             ResizeRedraw = true;
             BackColor = Theme.Surface;
-            Height = Theme.S(40);
+            Height = Theme.FieldHeight;
             Margin = new Padding(Theme.S(4));
-            Padding = new Padding(Theme.S(12), Theme.S(10), Theme.S(12), Theme.S(6));
+            Padding = new Padding(Theme.S(12), (Theme.FieldHeight - Theme.Body.Height) / 2, Theme.S(12), 0);
 
             Box = new TextBox
             {
@@ -179,7 +179,7 @@ namespace MssqlToSqlite.Ui
             DoubleBuffered = true;
             ResizeRedraw = true;
             BackColor = Theme.Surface;
-            Height = Theme.S(40);
+            Height = Theme.FieldHeight;
             Margin = new Padding(Theme.S(4));
             Combo = combo;
             combo.Margin = Padding.Empty;
@@ -214,7 +214,7 @@ namespace MssqlToSqlite.Ui
             _items.AddRange(items);
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
             Font = Theme.BodyStrong;
-            Height = Theme.S(40);
+            Height = Theme.FieldHeight;
             Cursor = Cursors.Hand;
             Margin = new Padding(Theme.S(4));
             TabStop = true;
