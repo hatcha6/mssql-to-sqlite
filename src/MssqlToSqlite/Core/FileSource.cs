@@ -125,6 +125,9 @@ namespace MssqlToSqlite.Core
             log(Text.CopyingDataFile);
             File.Copy(mdfPath, copy);
             _copies.Add(copy);
+            // Detached files and files off a CD/USB stick are often read-only, and
+            // SQL Server cannot rebuild the log of a read-only primary file.
+            File.SetAttributes(copy, File.GetAttributes(copy) & ~FileAttributes.ReadOnly);
 
             using (var connection = _options.Open("master"))
             {
